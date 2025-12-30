@@ -28,8 +28,11 @@ export const metadata: Metadata = {
     ],
   },
   other: {
+    "og:type": "website",
     "og:image": "https://v0-base-mini-app-six.vercel.app/base-logo.png",
     "og:image:alt": "Base Score",
+    "og:image:width": "1200",
+    "og:image:height": "630",
     "fc:frame": "vNext",
     "fc:frame:image": "https://v0-base-mini-app-six.vercel.app/base-logo.png",
     "fc:frame:image:aspect_ratio": "1.91:1",
@@ -37,6 +40,7 @@ export const metadata: Metadata = {
     "fc:frame:button:1:action": "launch_frame",
     "fc:frame:button:1:target": "https://v0-base-mini-app-six.vercel.app",
     "base:app_id": "692445c52ba3bc50c6d0ceb4",
+    "fc:miniapp:version": "vNext",
   },
   icons: {
     icon: "/base-logo.png",
@@ -52,35 +56,26 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <head>
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://v0-base-mini-app-six.vercel.app" />
+        <meta property="og:title" content="Base Score – Track Your Base Chain Score" />
+        <meta
+          property="og:description"
+          content="Check your Base Chain activity score instantly and share your progress with friends."
+        />
+        <meta property="og:image" content="https://v0-base-mini-app-six.vercel.app/base-logo.png" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:alt" content="Base Score" />
+
         <meta name="base:app_id" content="692445c52ba3bc50c6d0ceb4" />
 
         <meta name="fc:frame" content="vNext" />
         <meta name="fc:frame:image" content="https://v0-base-mini-app-six.vercel.app/base-logo.png" />
         <meta name="fc:frame:image:aspect_ratio" content="1.91:1" />
-        <meta name="og:title" content="Base Score – Track Your Base Chain Score" />
-        <meta
-          name="og:description"
-          content="Check your Base Chain activity score instantly and share your progress with friends."
-        />
-        <meta name="og:image" content="https://v0-base-mini-app-six.vercel.app/base-logo.png" />
         <meta name="fc:frame:button:1" content="📊 Open Dashboard" />
         <meta name="fc:frame:button:1:action" content="launch_frame" />
         <meta name="fc:frame:button:1:target" content="https://v0-base-mini-app-six.vercel.app" />
-        {/* Updated fc:miniapp meta tag to include proper embed configuration with imageUrl */}
-        <meta
-          name="fc:miniapp"
-          content={JSON.stringify({
-            version: "next",
-            imageUrl: "https://v0-base-mini-app-six.vercel.app/base-logo.png",
-            button: {
-              title: "Open Base Score",
-              action: {
-                type: "launch_frame",
-                url: "https://v0-base-mini-app-six.vercel.app",
-              },
-            },
-          })}
-        />
       </head>
       <body className={`font-sans antialiased ${_geist.className}`}>
         {children}
