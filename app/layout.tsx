@@ -35,17 +35,6 @@ export const metadata: Metadata = {
   },
   other: {
     "base:app_id": "692445c52ba3bc50c6d0ceb4",
-    "fc:miniapp": JSON.stringify({
-      version: "vNext",
-      imageUrl: "https://v0-base-mini-app-six.vercel.app/base-logo.png",
-      button: {
-        title: "Open Base Score",
-        action: {
-          type: "launch_frame",
-          url: "https://v0-base-mini-app-six.vercel.app",
-        },
-      },
-    }),
   },
   icons: {
     icon: "/base-logo.png",
@@ -62,23 +51,8 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <head>
         <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://v0-base-mini-app-six.vercel.app" />
-        <meta property="og:title" content="Base Score – Track Your Base Chain Score" />
         <meta
-          property="og:description"
-          content="Check your Base Chain activity score instantly and share your progress with friends."
-        />
-        <meta property="og:image" content="https://v0-base-mini-app-six.vercel.app/base-logo.png" />
-        <meta property="og:image:width" content="1200" />
-        <meta property="og:image:height" content="630" />
-        <meta property="og:image:alt" content="Base Score" />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Base Score" />
-        <meta name="twitter:description" content="Check your Base Chain activity score instantly" />
-        <meta name="twitter:image" content="https://v0-base-mini-app-six.vercel.app/base-logo.png" />
-        <meta name="base:app_id" content="692445c52ba3bc50c6d0ceb4" />
-        <meta
-          name="fc:miniapp"
+          property="fc:miniapp"
           content='{"version":"vNext","imageUrl":"https://v0-base-mini-app-six.vercel.app/base-logo.png","button":{"title":"Open Base Score","action":{"type":"launch_frame","url":"https://v0-base-mini-app-six.vercel.app"}}}'
         />
       </head>
