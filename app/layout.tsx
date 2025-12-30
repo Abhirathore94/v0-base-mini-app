@@ -27,20 +27,25 @@ export const metadata: Metadata = {
       },
     ],
   },
+  twitter: {
+    card: "summary_large_image",
+    title: "Base Score",
+    description: "Check your Base Chain activity score instantly",
+    images: ["https://v0-base-mini-app-six.vercel.app/base-logo.png"],
+  },
   other: {
-    "og:type": "website",
-    "og:image": "https://v0-base-mini-app-six.vercel.app/base-logo.png",
-    "og:image:alt": "Base Score",
-    "og:image:width": "1200",
-    "og:image:height": "630",
-    "fc:frame": "vNext",
-    "fc:frame:image": "https://v0-base-mini-app-six.vercel.app/base-logo.png",
-    "fc:frame:image:aspect_ratio": "1.91:1",
-    "fc:frame:button:1": "📊 Open Dashboard",
-    "fc:frame:button:1:action": "launch_frame",
-    "fc:frame:button:1:target": "https://v0-base-mini-app-six.vercel.app",
     "base:app_id": "692445c52ba3bc50c6d0ceb4",
-    "fc:miniapp:version": "vNext",
+    "fc:miniapp": JSON.stringify({
+      version: "vNext",
+      imageUrl: "https://v0-base-mini-app-six.vercel.app/base-logo.png",
+      button: {
+        title: "Open Base Score",
+        action: {
+          type: "launch_frame",
+          url: "https://v0-base-mini-app-six.vercel.app",
+        },
+      },
+    }),
   },
   icons: {
     icon: "/base-logo.png",
@@ -67,15 +72,15 @@ export default function RootLayout({
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
         <meta property="og:image:alt" content="Base Score" />
-
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Base Score" />
+        <meta name="twitter:description" content="Check your Base Chain activity score instantly" />
+        <meta name="twitter:image" content="https://v0-base-mini-app-six.vercel.app/base-logo.png" />
         <meta name="base:app_id" content="692445c52ba3bc50c6d0ceb4" />
-
-        <meta name="fc:frame" content="vNext" />
-        <meta name="fc:frame:image" content="https://v0-base-mini-app-six.vercel.app/base-logo.png" />
-        <meta name="fc:frame:image:aspect_ratio" content="1.91:1" />
-        <meta name="fc:frame:button:1" content="📊 Open Dashboard" />
-        <meta name="fc:frame:button:1:action" content="launch_frame" />
-        <meta name="fc:frame:button:1:target" content="https://v0-base-mini-app-six.vercel.app" />
+        <meta
+          name="fc:miniapp"
+          content='{"version":"vNext","imageUrl":"https://v0-base-mini-app-six.vercel.app/base-logo.png","button":{"title":"Open Base Score","action":{"type":"launch_frame","url":"https://v0-base-mini-app-six.vercel.app"}}}'
+        />
       </head>
       <body className={`font-sans antialiased ${_geist.className}`}>
         {children}
