@@ -61,13 +61,6 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <head>
-        <meta name="fc:frame" content="vNext" />
-        {process.env.FARCASTER_HEADER && <meta name="fc:frame:post_url" content={process.env.FARCASTER_HEADER} />}
-        {process.env.FARCASTER_PAYLOAD && <meta name="fc:frame:image" content={process.env.FARCASTER_PAYLOAD} />}
-        {process.env.FARCASTER_SIGNATURE && (
-          <meta name="fc:frame:button:1:action" content={process.env.FARCASTER_SIGNATURE} />
-        )}
-
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://v0-base-mini-app-six.vercel.app" />
         <meta property="og:title" content="Base Score – Track Your Base Chain Score" />
