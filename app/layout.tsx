@@ -61,6 +61,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <head>
+        <meta name="fc:frame" content="vNext" />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://v0-base-mini-app-six.vercel.app" />
         <meta property="og:title" content="Base Score – Track Your Base Chain Score" />
