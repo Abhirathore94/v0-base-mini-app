@@ -9,8 +9,6 @@ import { TaskSection } from "@/components/task-section"
 import { TrendingUp, Users, ImageIcon, FileCode, ExternalLink } from "lucide-react"
 import { useEffect, useState } from "react"
 
-import { sdk } from "@farcaster/miniapp-sdk"
-
 declare global {
   interface Window {
     ethereum?: any
@@ -281,17 +279,21 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const initSDK = async () => {
+    const initializeApp = async () => {
       try {
-        sdk.actions.ready()
-        console.log("[v0] SDK ready called successfully")
+        const { sdk } = await import("@farcaster/miniapp-sdk")
+
+        await sdk.actions.ready()
+        console.log("[v0] SDK ready() called successfully")
       } catch (error) {
-        console.log("[v0] SDK initialization note:", error)
+        console.error("[v0] SDK initialization error:", error)
+        // Don't fail the app, just log the error
       }
+
+      checkConnection()
     }
 
-    initSDK()
-    checkConnection()
+    initializeApp()
   }, [])
 
   const checkConnection = async () => {
