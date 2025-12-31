@@ -53,7 +53,7 @@ export default function RootLayout({
         <meta property="og:type" content="website" />
         <meta
           property="fc:miniapp"
-          content='{"version":"vNext","imageUrl":"https://v0-base-mini-app-six.vercel.app/base-logo.png","button":{"title":"Open Base Score","action":{"type":"launch_frame","url":"https://v0-base-mini-app-six.vercel.app"}}}'
+          content='{"version":"1","imageUrl":"https://v0-base-mini-app-six.vercel.app/base-logo.png","button":{"title":"Open Base Score","action":{"type":"launch_frame","name":"Base Score","url":"https://v0-base-mini-app-six.vercel.app"}}}'
         />
       </head>
       <body className={`font-sans antialiased ${_geist.className}`}>
