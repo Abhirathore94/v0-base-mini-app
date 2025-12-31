@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
+import { ThemeProvider } from "next-themes"
 
 const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
@@ -48,16 +49,20 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <meta property="og:type" content="website" />
         <meta
           property="fc:miniapp"
           content='{"version":"1","imageUrl":"https://v0-base-mini-app-six.vercel.app/base-logo.png","button":{"title":"Open Base Score","action":{"type":"launch_frame","name":"Base Score","url":"https://v0-base-mini-app-six.vercel.app"}}}'
         />
+        <meta name="theme-color" content="#0052FF" media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content="#0052FF" media="(prefers-color-scheme: dark)" />
       </head>
       <body className={`font-sans antialiased ${_geist.className}`}>
-        {children}
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+          {children}
+        </ThemeProvider>
         <Analytics />
       </body>
     </html>

@@ -8,6 +8,7 @@ import { ActivityFeed } from "@/components/activity-feed"
 import { TaskSection } from "@/components/task-section"
 import { TrendingUp, Users, ImageIcon, FileCode, ExternalLink } from "lucide-react"
 import { useEffect, useState } from "react"
+import { WalletConnector } from "@/components/wallet-connector"
 
 declare global {
   interface Window {
@@ -277,6 +278,8 @@ export default function Home() {
   const [isConnecting, setIsConnecting] = useState(false)
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(true)
+  const [showWalletModal, setShowWalletModal] = useState(false)
+  const [selectedProvider, setSelectedProvider] = useState("")
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -309,59 +312,19 @@ export default function Home() {
     }
   }
 
-  const connectWallet = async () => {
-    setError("")
-    if (typeof window.ethereum === "undefined") {
-      setError("Please install MetaMask or another Web3 wallet")
-      return
-    }
+  const connectWallet = () => {
+    setShowWalletModal(true)
+  }
 
+  const handleWalletConnect = async (wallet: { provider: string; address: string }) => {
+    setSelectedProvider(wallet.provider)
     setIsConnecting(true)
-
     try {
-      const accounts = await window.ethereum.request({
-        method: "eth_requestAccounts",
-      })
-
-      const chainId = await window.ethereum.request({ method: "eth_chainId" })
-      const chainIdDecimal = Number.parseInt(chainId, 16)
-
-      // Base mainnet chain ID is 8453
-      if (chainIdDecimal !== 8453) {
-        try {
-          await window.ethereum.request({
-            method: "wallet_switchEthereumChain",
-            params: [{ chainId: "0x2105" }],
-          })
-        } catch (switchError: any) {
-          if (switchError.code === 4902) {
-            await window.ethereum.request({
-              method: "wallet_addEthereumChain",
-              params: [
-                {
-                  chainId: "0x2105",
-                  chainName: "Base",
-                  nativeCurrency: {
-                    name: "Ether",
-                    symbol: "ETH",
-                    decimals: 18,
-                  },
-                  rpcUrls: ["https://mainnet.base.org"],
-                  blockExplorerUrls: ["https://basescan.org"],
-                },
-              ],
-            })
-          } else {
-            throw switchError
-          }
-        }
-      }
-
-      await loadWalletData(accounts[0])
-      setIsConnecting(false)
-    } catch (err: any) {
-      console.error("[v0] Connection error:", err)
-      setError(err.message || "Failed to connect wallet")
+      await loadWalletData(wallet.address)
+      setShowWalletModal(false)
+    } catch (err) {
+      console.error("[v0] Error loading wallet data:", err)
+    } finally {
       setIsConnecting(false)
     }
   }
@@ -425,37 +388,11 @@ export default function Home() {
       })
     : []
 
-  if (!walletConnected || !walletData) {
-    return (
-      <div className="flex min-h-screen bg-gradient-to-br from-[#0a0a0f] via-[#12121a] to-[#0f0f16] pb-20 md:pb-0">
-        <Sidebar />
-        <main className="flex-1 flex items-center justify-center p-4 md:p-8">
-          <div className="glass-card p-6 md:p-12 rounded-3xl text-center max-w-md w-full">
-            <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">Connect Your Wallet</h2>
-            <p className="text-sm md:text-base text-white/60 mb-8">
-              Connect your wallet to view your Base Activity Score and track your on-chain achievements
-            </p>
-            {error && (
-              <div className="mb-4 p-3 rounded-xl bg-red-500/20 border border-red-400/30 text-red-400 text-sm">
-                {error}
-              </div>
-            )}
-            <button
-              onClick={connectWallet}
-              disabled={isConnecting}
-              className="w-full px-6 py-4 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-semibold hover:shadow-lg hover:shadow-cyan-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isConnecting ? "Connecting..." : "Connect Wallet"}
-            </button>
-          </div>
-        </main>
-      </div>
-    )
-  }
-
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-[#0a0a0f] via-[#12121a] to-[#0f0f16] pb-20 md:pb-0">
+    <div className="flex min-h-screen bg-gradient-to-br from-[#0a0a0f] via-[#12121a] to-[#0f0f16]">
       <Sidebar />
+
+      {showWalletModal && <WalletConnector onConnect={handleWalletConnect} onClose={() => setShowWalletModal(false)} />}
 
       <main className="flex-1 p-3 md:p-8 overflow-hidden">
         <div className="max-w-[1600px] mx-auto">

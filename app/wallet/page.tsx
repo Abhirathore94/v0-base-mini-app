@@ -1,6 +1,7 @@
 "use client"
 
 import { Sidebar } from "@/components/sidebar"
+import { WalletConnector } from "@/components/wallet-connector"
 import { Wallet, Plus, Trash2, AlertCircle } from "lucide-react"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
@@ -11,19 +12,23 @@ interface ConnectedWallet {
   balance: string
   isConnected: boolean
   chainId?: number
+  provider: string // Added provider field
 }
 
 declare global {
   interface Window {
     ethereum?: any
+    okxwallet?: any
+    rabby?: any
+    farcaster?: any
   }
 }
-// </CHANGE>
 
 export default function WalletPage() {
   const [wallets, setWallets] = useState<ConnectedWallet[]>([])
   const [isConnecting, setIsConnecting] = useState(false)
   const [error, setError] = useState("")
+  const [showWalletModal, setShowWalletModal] = useState(false) // Added modal state
 
   useEffect(() => {
     checkConnection()
@@ -48,12 +53,73 @@ export default function WalletPage() {
               balance: `${balanceInEth} ETH`,
               isConnected: true,
               chainId: Number.parseInt(chainId, 16),
+              provider: window.ethereum?.isMetaMask ? "metamask" : "unknown", // Detect provider
             },
           ])
         }
       } catch (err) {
         console.error("[v0] Error checking connection:", err)
       }
+    }
+  }
+
+  const handleWalletConnect = async (wallet: { provider: string; address: string }) => {
+    const address = wallet.address
+
+    // Check if wallet already added
+    if (wallets.some((w) => w.address.toLowerCase() === address.toLowerCase())) {
+      setError("Wallet already connected")
+      return
+    }
+
+    if (wallets.length >= 5) {
+      setError("Maximum 5 wallets allowed")
+      return
+    }
+
+    try {
+      // Get balance based on provider
+      let balance: string
+      if (wallet.provider === "metamask" || wallet.provider === "coinbase") {
+        balance = await window.ethereum.request({
+          method: "eth_getBalance",
+          params: [address, "latest"],
+        })
+      } else if (wallet.provider === "okx") {
+        balance = await (window as any).okxwallet.request({
+          method: "eth_getBalance",
+          params: [address, "latest"],
+        })
+      } else if (wallet.provider === "rabby") {
+        balance = await (window as any).rabby.request({
+          method: "eth_getBalance",
+          params: [address, "latest"],
+        })
+      } else {
+        balance = await (window as any).farcaster.request({
+          method: "eth_getBalance",
+          params: [address, "latest"],
+        })
+      }
+
+      const balanceInEth = (Number.parseInt(balance, 16) / 1e18).toFixed(4)
+
+      // Add wallet
+      const newWallet: ConnectedWallet = {
+        id: Date.now(),
+        address,
+        balance: `${balanceInEth} ETH`,
+        isConnected: true,
+        chainId: 8453,
+        provider: wallet.provider, // Store provider
+      }
+
+      setWallets([...wallets, newWallet])
+      setShowWalletModal(false)
+      setError("")
+    } catch (err: any) {
+      console.error("[v0] Connection error:", err)
+      setError(err.message || "Failed to connect wallet")
     }
   }
 
@@ -137,6 +203,7 @@ export default function WalletPage() {
         balance: `${balanceInEth} ETH`,
         isConnected: true,
         chainId: 8453,
+        provider: window.ethereum?.isMetaMask ? "metamask" : "unknown", // Detect provider
       }
 
       setWallets([...wallets, newWallet])
@@ -173,6 +240,8 @@ export default function WalletPage() {
     <div className="flex min-h-screen bg-gradient-to-br from-[#0a0a0f] via-[#12121a] to-[#0f0f16]">
       <Sidebar />
 
+      {showWalletModal && <WalletConnector onConnect={handleWalletConnect} onClose={() => setShowWalletModal(false)} />}
+
       <main className="flex-1 p-8 overflow-auto">
         <div className="max-w-4xl mx-auto">
           <div className="mb-8">
@@ -188,7 +257,6 @@ export default function WalletPage() {
               </div>
             </div>
           )}
-          {/* </CHANGE> */}
 
           {/* Wallets List */}
           <div className="space-y-4 mb-6">
@@ -201,13 +269,15 @@ export default function WalletPage() {
                     </div>
                     <div>
                       <p className="text-white font-mono text-sm">{wallet.address}</p>
+                      <p className="text-cyan-400/60 text-xs mt-1">
+                        Provider: {wallet.provider.charAt(0).toUpperCase() + wallet.provider.slice(1)}
+                      </p>
                       <button
                         onClick={() => refreshBalance(wallet)}
                         className="text-white/40 hover:text-cyan-400 text-xs mt-1 transition-colors"
                       >
                         {wallet.balance} (click to refresh)
                       </button>
-                      {/* </CHANGE> */}
                       {wallet.chainId && wallet.chainId !== 8453 && (
                         <p className="text-amber-400 text-xs mt-1">⚠️ Not on Base network</p>
                       )}
@@ -233,38 +303,27 @@ export default function WalletPage() {
 
           {wallets.length < 5 && (
             <Button
-              onClick={connectWallet}
+              onClick={() => setShowWalletModal(true)} // Open wallet modal
               disabled={isConnecting}
               className="w-full glass-card p-6 rounded-3xl border-2 border-dashed border-white/[0.15] hover:border-cyan-400/50 transition-colors flex items-center justify-center gap-2 text-white/60 hover:text-cyan-400 bg-transparent disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isConnecting ? (
-                <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-cyan-400 border-t-transparent" />
-                  Connecting...
-                </>
-              ) : (
-                <>
-                  <Plus className="h-5 w-5" />
-                  Connect Wallet ({wallets.length}/5)
-                </>
-              )}
+              <Plus className="h-5 w-5" />
+              Add Wallet ({wallets.length}/5)
             </Button>
           )}
-          {/* </CHANGE> */}
 
           {wallets.length === 0 && (
             <div className="glass-card p-6 rounded-3xl mt-6">
-              <h3 className="text-white font-semibold mb-3">How to connect:</h3>
+              <h3 className="text-white font-semibold mb-3">Supported Wallets:</h3>
               <ul className="text-white/60 text-sm space-y-2">
-                <li>• Install MetaMask or another Web3 wallet extension</li>
-                <li>• Click "Connect Wallet" button above</li>
-                <li>• Approve the connection in your wallet</li>
-                <li>• Your wallet will be added to Base network</li>
-                <li>• You can connect up to 5 wallets</li>
+                <li>🦊 MetaMask</li>
+                <li>🔷 Coinbase Wallet (Base in-app)</li>
+                <li>⬜ OKX Wallet</li>
+                <li>🐰 Rabby Wallet</li>
+                <li>Ⓜ️ Farcaster Wallet</li>
               </ul>
             </div>
           )}
-          {/* </CHANGE> */}
         </div>
       </main>
     </div>

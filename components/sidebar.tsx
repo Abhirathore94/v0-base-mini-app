@@ -88,7 +88,7 @@ export function Sidebar() {
               <Link
                 key={item.id}
                 href={item.href}
-                className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300 group relative ${
+                className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-300 group relative min-h-[44px] min-w-[44px] ${
                   isActive
                     ? "bg-cyan-500/20 text-cyan-400 glow-cyan-soft"
                     : "text-white/40 hover:text-cyan-400 hover:bg-white/[0.05]"
@@ -104,7 +104,7 @@ export function Sidebar() {
           })}
         </nav>
 
-        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center cursor-pointer hover:scale-105 transition-transform relative group">
+        <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center cursor-pointer hover:scale-105 transition-transform relative group min-h-[44px] min-w-[44px]">
           <span className="text-white font-bold text-sm">{getUserInitial()}</span>
           <span className="absolute left-full ml-4 px-3 py-1.5 bg-[#1a1a24] text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap transition-opacity border border-white/[0.08]">
             {getUserLabel()}
@@ -121,7 +121,7 @@ export function Sidebar() {
               <Link
                 key={item.id}
                 href={item.href}
-                className={`flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all ${
+                className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all min-h-[44px] min-w-[44px] justify-center ${
                   isActive ? "text-cyan-400" : "text-white/40"
                 }`}
               >
