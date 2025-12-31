@@ -11,7 +11,6 @@ interface LeaderboardUser {
   volume: number
   nftActivity: number
   newContracts: number
-  taskName: string
   ethAmount: string
   score: number
 }
@@ -28,6 +27,7 @@ export default function AnalyticsPage() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardUser[]>([])
   const [userRank, setUserRank] = useState(0)
   const [isConnecting, setIsConnecting] = useState(false)
+  const [isLoadingData, setIsLoadingData] = useState(false)
 
   useEffect(() => {
     checkConnection()
@@ -108,14 +108,17 @@ export default function AnalyticsPage() {
 
   const fetchLeaderboard = async () => {
     try {
+      setIsLoadingData(true)
       const response = await fetch(`/api/leaderboard?userAddress=${walletAddress}`)
       const data = await response.json()
 
-      setLeaderboard(data.leaderboard)
-      setUserRank(data.userRank)
-      console.log("[v0] Leaderboard data:", data)
+      setLeaderboard(data.leaderboard || [])
+      setUserRank(data.userRank || 1)
+      console.log("[v0] Leaderboard data for wallet:", walletAddress, data)
     } catch (err) {
       console.error("[v0] Error fetching leaderboard:", err)
+    } finally {
+      setIsLoadingData(false)
     }
   }
 
@@ -150,9 +153,7 @@ export default function AnalyticsPage() {
     )
   }
 
-  const currentUser = leaderboard.find((user) => user.address.toLowerCase() === walletAddress.toLowerCase())
-  const activityScore = currentUser?.score || 0
-  const percentile = leaderboard.length > 0 ? Math.round((1 - userRank / leaderboard.length) * 100) : 0
+  const currentUser = leaderboard.length > 0 ? leaderboard[0] : null
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-[#0a0a0f] via-[#12121a] to-[#0f0f16]">
@@ -162,54 +163,56 @@ export default function AnalyticsPage() {
         <div className="max-w-6xl mx-auto">
           <div className="mb-8">
             <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">Analytics & Leaderboard</h1>
-            <p className="text-white/60 text-sm md:text-base">Your rank among all active Base users</p>
+            <p className="text-white/60 text-sm md:text-base">Your Base Chain activity metrics</p>
             <p className="text-white/40 text-xs md:text-sm mt-2">
               Connected: {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
             </p>
           </div>
 
           {/* Your Stats Card */}
-          <div className="glass-card p-6 md:p-8 rounded-3xl mb-6">
-            <div className="flex flex-col md:flex-row items-center gap-6 mb-6">
-              <div className="relative">
-                <div className="w-32 h-32 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center glow-cyan">
-                  <Trophy className="h-16 w-16 text-white" />
-                </div>
-                <div className="absolute -top-2 -right-2 w-12 h-12 rounded-full bg-yellow-400 flex items-center justify-center text-yellow-900 font-bold border-4 border-[#12121a]">
-                  {userRank}
-                </div>
-              </div>
-              <div className="text-center md:text-left">
-                <h2 className="text-3xl md:text-4xl font-bold text-white mb-2">Rank #{userRank}</h2>
-                <p className="text-white/60 mb-1">
-                  Top {percentile}% among {leaderboard.length} active users
-                </p>
-                <p className="text-cyan-400 text-sm">Score: {activityScore} pts</p>
-              </div>
+          {isLoadingData ? (
+            <div className="glass-card p-12 rounded-3xl text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-2 border-cyan-400 border-t-transparent mx-auto mb-4" />
+              <p className="text-white/60">Loading wallet data...</p>
             </div>
-
-            {/* Your Stats Grid */}
-            {currentUser && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-                <div className="bg-white/[0.05] rounded-2xl p-4">
-                  <p className="text-white/60 text-xs md:text-sm mb-1">TX Volume</p>
-                  <p className="text-lg md:text-2xl font-bold text-cyan-400">{currentUser.volume}</p>
+          ) : currentUser ? (
+            <div className="glass-card p-6 md:p-8 rounded-3xl mb-6">
+              <div className="flex flex-col md:flex-row items-center gap-6 mb-6">
+                <div className="relative">
+                  <div className="w-32 h-32 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center glow-cyan">
+                    <Trophy className="h-16 w-16 text-white" />
+                  </div>
                 </div>
-                <div className="bg-white/[0.05] rounded-2xl p-4">
-                  <p className="text-white/60 text-xs md:text-sm mb-1">NFT Activity</p>
-                  <p className="text-lg md:text-2xl font-bold text-blue-400">{currentUser.nftActivity}</p>
-                </div>
-                <div className="bg-white/[0.05] rounded-2xl p-4">
-                  <p className="text-white/60 text-xs md:text-sm mb-1">New Contracts</p>
-                  <p className="text-lg md:text-2xl font-bold text-purple-400">{currentUser.newContracts}</p>
-                </div>
-                <div className="bg-white/[0.05] rounded-2xl p-4">
-                  <p className="text-white/60 text-xs md:text-sm mb-1">ETH Amount</p>
-                  <p className="text-lg md:text-2xl font-bold text-green-400">{currentUser.ethAmount} ETH</p>
+                <div className="text-center md:text-left">
+                  <h2 className="text-3xl md:text-4xl font-bold text-white mb-2">Score: {currentUser.score}</h2>
+                  <p className="text-white/60 mb-1">Based on your real Base Chain activity</p>
+                  <p className="text-cyan-400 text-sm">Rank: #{currentUser.rank}</p>
                 </div>
               </div>
-            )}
-          </div>
+
+              {/* Your Stats Grid */}
+              {currentUser && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+                  <div className="bg-white/[0.05] rounded-2xl p-4">
+                    <p className="text-white/60 text-xs md:text-sm mb-1">TX Volume</p>
+                    <p className="text-lg md:text-2xl font-bold text-cyan-400">{currentUser.volume}</p>
+                  </div>
+                  <div className="bg-white/[0.05] rounded-2xl p-4">
+                    <p className="text-white/60 text-xs md:text-sm mb-1">NFT Activity</p>
+                    <p className="text-lg md:text-2xl font-bold text-blue-400">{currentUser.nftActivity}</p>
+                  </div>
+                  <div className="bg-white/[0.05] rounded-2xl p-4">
+                    <p className="text-white/60 text-xs md:text-sm mb-1">New Contracts</p>
+                    <p className="text-lg md:text-2xl font-bold text-purple-400">{currentUser.newContracts}</p>
+                  </div>
+                  <div className="bg-white/[0.05] rounded-2xl p-4">
+                    <p className="text-white/60 text-xs md:text-sm mb-1">ETH Balance</p>
+                    <p className="text-lg md:text-2xl font-bold text-green-400">{currentUser.ethAmount} ETH</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : null}
 
           {/* Full Leaderboard */}
           <div className="glass-card p-4 md:p-6 rounded-3xl">
