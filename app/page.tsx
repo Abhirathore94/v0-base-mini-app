@@ -9,7 +9,7 @@ import { TaskSection } from "@/components/task-section"
 import { TrendingUp, Users, ImageIcon, FileCode, ExternalLink } from "lucide-react"
 import { useEffect, useState } from "react"
 
-import { sdk } from "@farcaster/frame-sdk"
+import { sdk } from "@farcaster/miniapp-sdk"
 
 declare global {
   interface Window {
