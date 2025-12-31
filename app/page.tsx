@@ -9,6 +9,8 @@ import { TaskSection } from "@/components/task-section"
 import { TrendingUp, Users, ImageIcon, FileCode, ExternalLink } from "lucide-react"
 import { useEffect, useState } from "react"
 
+import { sdk } from "@farcaster/frame-sdk"
+
 declare global {
   interface Window {
     ethereum?: any
@@ -281,16 +283,10 @@ export default function Home() {
   useEffect(() => {
     const initSDK = async () => {
       try {
-        if (typeof window !== "undefined") {
-          // Import SDK from Farcaster
-          const sdk = await import("@farcaster/frame-sdk").then((m) => m.default)
-          if (sdk && sdk.actions && sdk.actions.ready) {
-            await sdk.actions.ready()
-            console.log("[v0] SDK ready called successfully")
-          }
-        }
+        sdk.actions.ready()
+        console.log("[v0] SDK ready called successfully")
       } catch (error) {
-        console.log("[v0] SDK not available in preview mode - expected behavior")
+        console.log("[v0] SDK initialization note:", error)
       }
     }
 
