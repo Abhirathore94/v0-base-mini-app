@@ -264,7 +264,7 @@ export default function Page() {
           // Not in Farcaster context
         }
 
-        await new Promise((resolve) => setTimeout(resolve, 1000))
+        await new Promise((resolve) => setTimeout(resolve, 800))
         setShowWalletModal(true)
       } catch (err) {
         console.error("[v0] Error during initialization:", err)
@@ -275,10 +275,12 @@ export default function Page() {
     }
 
     initializeApp()
-  }, [])
+  }, []) // Empty dependency array ensures this runs only once
 
   const connectWallet = () => {
-    setShowWalletModal(true)
+    if (!walletConnected) {
+      setShowWalletModal(true)
+    }
   }
 
   const handleWalletConnect = async (wallet: { provider: string; address: string }) => {

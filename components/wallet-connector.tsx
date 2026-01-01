@@ -8,20 +8,22 @@ interface WalletProvider {
   name: string
   icon: string
   description: string
-  detect: () => Promise<boolean>
+  detect: () => boolean | Promise<boolean>
   connect: () => Promise<string[]>
 }
 
 const walletProviders: WalletProvider[] = [
   {
     id: "farcaster-inapp",
-    name: "Farcaster In-App Wallet",
+    name: "Farcaster In-App",
     icon: "Ⓜ️",
-    description: "Built-in Farcaster wallet",
+    description: "Farcaster native wallet",
     detect: async () => {
+      if (typeof window === "undefined") return false
       try {
-        const { default: sdk } = await import("@farcaster/miniapp-sdk")
-        return !!sdk
+        // Check if in Farcaster context via user agent
+        const isFarcasterApp = /^Farcaster/.test(window.navigator?.userAgent || "")
+        return isFarcasterApp
       } catch {
         return false
       }
@@ -30,33 +32,39 @@ const walletProviders: WalletProvider[] = [
       try {
         const { default: sdk } = await import("@farcaster/miniapp-sdk")
         const context = await sdk.context.getContext()
-        if (context?.user?.farcasterUser?.custody_address) {
-          return [context.user.farcasterUser.custody_address]
+        const custody = context?.user?.farcasterUser?.custody_address
+        if (custody) return [custody]
+        throw new Error("No custody address")
+      } catch (err) {
+        // If SDK fails, try using ethereum provider
+        if (window.ethereum) {
+          try {
+            const accounts = await window.ethereum.request({
+              method: "eth_requestAccounts",
+            })
+            return accounts
+          } catch {
+            throw new Error("Failed to get Farcaster wallet")
+          }
         }
-        throw new Error("No custody address available")
-      } catch (err: any) {
-        throw new Error(err.message || "Failed to get Farcaster wallet")
+        throw new Error("Farcaster wallet not available")
       }
     },
   },
   {
     id: "base-inapp",
-    name: "Base App In-App Wallet",
+    name: "Base In-App",
     icon: "⚡",
-    description: "Built-in Base app wallet",
-    detect: async () => {
+    description: "Base app native wallet",
+    detect: () => {
       if (typeof window === "undefined") return false
-      const isBaseApp =
-        navigator.userAgent?.includes?.("BaseApp") ||
-        navigator.userAgent?.includes?.("Base") ||
-        (window as any).__base__ !== undefined
-      return isBaseApp
+      const isBase = /base/i.test(window.navigator?.userAgent || "")
+      return isBase && !!window.ethereum
     },
     connect: async () => {
       try {
-        const provider = (window as any).ethereum
-        if (!provider) throw new Error("Base wallet not available")
-        const accounts = await provider.request({
+        if (!window.ethereum) throw new Error("No provider found")
+        const accounts = await window.ethereum.request({
           method: "eth_requestAccounts",
         })
         return accounts
@@ -69,75 +77,93 @@ const walletProviders: WalletProvider[] = [
     id: "metamask",
     name: "MetaMask",
     icon: "🦊",
-    description: "MetaMask wallet",
-    detect: async () => {
+    description: "Browser extension or mobile app",
+    detect: () => {
       if (typeof window === "undefined") return false
-      // Check for MetaMask extension or mobile
-      return !!(window.ethereum?.isMetaMask && !window.ethereum?.isCoinbaseWallet && !window.ethereum?.isOKExWallet)
+      return !!(
+        window.ethereum?.isMetaMask &&
+        !window.ethereum?.isCoinbaseWallet &&
+        !window.ethereum?.isOKExWallet &&
+        !window.ethereum?.isRabby
+      )
     },
     connect: async () => {
-      if (!window.ethereum?.isMetaMask) {
-        throw new Error("MetaMask not found")
+      try {
+        if (!window.ethereum?.isMetaMask) {
+          throw new Error("MetaMask not found")
+        }
+        const accounts = await window.ethereum.request({
+          method: "eth_requestAccounts",
+        })
+        return accounts
+      } catch (err: any) {
+        throw new Error(err.message || "Failed to connect MetaMask")
       }
-      const accounts = await window.ethereum.request({
-        method: "eth_requestAccounts",
-      })
-      return accounts
     },
   },
   {
     id: "coinbase",
     name: "Coinbase Wallet",
     icon: "🔷",
-    description: "Coinbase wallet",
-    detect: async () => {
+    description: "Coinbase web3 wallet",
+    detect: () => {
       if (typeof window === "undefined") return false
-      return !!(window.ethereum?.isCoinbaseWallet || window.ethereum?.providers?.some?.((p: any) => p.isCoinbaseWallet))
+      return !!window.ethereum?.isCoinbaseWallet || !!window.ethereum?.providers?.some?.((p: any) => p.isCoinbaseWallet)
     },
     connect: async () => {
-      if (!window.ethereum) {
-        throw new Error("Coinbase Wallet not found")
+      try {
+        if (!window.ethereum) throw new Error("Coinbase Wallet not found")
+        const accounts = await window.ethereum.request({
+          method: "eth_requestAccounts",
+        })
+        return accounts
+      } catch (err: any) {
+        throw new Error(err.message || "Failed to connect Coinbase Wallet")
       }
-      const accounts = await window.ethereum.request({
-        method: "eth_requestAccounts",
-      })
-      return accounts
     },
   },
   {
     id: "okx",
     name: "OKX Wallet",
     icon: "⬜",
-    description: "OKX wallet",
-    detect: async () => {
+    description: "OKX web3 wallet",
+    detect: () => {
       if (typeof window === "undefined") return false
       return !!(window as any).okxwallet || window.ethereum?.isOKExWallet
     },
     connect: async () => {
-      const okxwallet = (window as any).okxwallet || window.ethereum
-      if (!okxwallet) throw new Error("OKX Wallet not found")
-      const accounts = await okxwallet.request({
-        method: "eth_requestAccounts",
-      })
-      return accounts
+      try {
+        const provider = (window as any).okxwallet || window.ethereum
+        if (!provider) throw new Error("OKX Wallet not found")
+        const accounts = await provider.request({
+          method: "eth_requestAccounts",
+        })
+        return accounts
+      } catch (err: any) {
+        throw new Error(err.message || "Failed to connect OKX Wallet")
+      }
     },
   },
   {
     id: "rabby",
     name: "Rabby Wallet",
     icon: "🐰",
-    description: "Rabby wallet",
-    detect: async () => {
+    description: "Rabby web3 wallet",
+    detect: () => {
       if (typeof window === "undefined") return false
       return !!(window as any).rabby || window.ethereum?.isRabby
     },
     connect: async () => {
-      const rabby = (window as any).rabby || window.ethereum
-      if (!rabby) throw new Error("Rabby Wallet not found")
-      const accounts = await rabby.request({
-        method: "eth_requestAccounts",
-      })
-      return accounts
+      try {
+        const provider = (window as any).rabby || window.ethereum
+        if (!provider) throw new Error("Rabby Wallet not found")
+        const accounts = await provider.request({
+          method: "eth_requestAccounts",
+        })
+        return accounts
+      } catch (err: any) {
+        throw new Error(err.message || "Failed to connect Rabby Wallet")
+      }
     },
   },
 ]
@@ -154,31 +180,42 @@ export function WalletConnector({ onConnect, onClose }: WalletConnectorProps) {
   const [isDetecting, setIsDetecting] = useState(true)
 
   useEffect(() => {
+    let mounted = true
+
     const detectWallets = async () => {
       try {
-        const detectionResults = await Promise.all(
-          walletProviders.map(async (w) => {
-            try {
-              const isAvailable = await w.detect()
-              return isAvailable ? w : null
-            } catch {
-              return null
-            }
-          }),
-        )
+        const results: WalletProvider[] = []
 
-        const detected = detectionResults.filter((w) => w !== null) as WalletProvider[]
-        setAvailableWallets(detected)
+        // Check each wallet sequentially to ensure proper detection
+        for (const wallet of walletProviders) {
+          try {
+            const available = await wallet.detect()
+            if (available && mounted) {
+              results.push(wallet)
+            }
+          } catch (err) {
+            // Silent fail for individual wallet detection
+          }
+        }
+
+        if (mounted) {
+          setAvailableWallets(results)
+        }
       } catch (err) {
         console.error("[v0] Error detecting wallets:", err)
       } finally {
-        setIsDetecting(false)
+        if (mounted) {
+          setIsDetecting(false)
+        }
       }
     }
 
-    // Small delay to allow SDK initialization
-    const timer = setTimeout(detectWallets, 800)
-    return () => clearTimeout(timer)
+    // Add delay to allow window.ethereum to be injected
+    const timer = setTimeout(detectWallets, 500)
+    return () => {
+      mounted = false
+      clearTimeout(timer)
+    }
   }, [])
 
   const handleConnect = async (provider: WalletProvider) => {
@@ -196,7 +233,6 @@ export function WalletConnector({ onConnect, onClose }: WalletConnectorProps) {
     } catch (err: any) {
       console.error("[v0] Connection error:", err)
       setError(err.message || `Failed to connect ${provider.name}`)
-    } finally {
       setIsLoading(false)
     }
   }
@@ -248,19 +284,13 @@ export function WalletConnector({ onConnect, onClose }: WalletConnectorProps) {
               <Wallet className="h-12 w-12 text-white/40 mx-auto mb-3" />
               <p className="text-white/60 text-sm mb-4">No wallets detected</p>
               <div className="bg-white/5 rounded-xl p-4 text-left">
-                <p className="text-white/60 text-xs mb-3 font-semibold">Available wallets:</p>
+                <p className="text-white/60 text-xs mb-3 font-semibold">To use this app:</p>
                 <ul className="text-white/40 text-xs space-y-2">
-                  <li>Ⓜ️ Farcaster In-App (in Farcaster app)</li>
-                  <li>⚡ Base App Wallet (in Base app)</li>
-                  <li>🦊 MetaMask</li>
-                  <li>🔷 Coinbase Wallet</li>
-                  <li>⬜ OKX Wallet</li>
-                  <li>🐰 Rabby Wallet</li>
+                  <li>📱 In Farcaster: Your wallet appears automatically</li>
+                  <li>📱 In Base App: Your wallet appears automatically</li>
+                  <li>🖥️ On Web: Install MetaMask, Coinbase, OKX, or Rabby</li>
                 </ul>
               </div>
-              <p className="text-white/40 text-xs mt-4">
-                Using this app inside Farcaster or Base app? Wallet should appear automatically.
-              </p>
             </div>
           )}
         </div>
