@@ -264,7 +264,7 @@ export default function Page() {
           // Silent fail - not in Farcaster context
         }
 
-        setShowWalletModal(true)
+        setShowWalletModal(false)
       } catch (err) {
         console.error("[v0] Error during initialization:", err)
         setError("Failed to initialize app")
@@ -285,6 +285,7 @@ export default function Page() {
     setIsConnecting(true)
     try {
       await loadWalletData(wallet.address)
+      setWalletConnected(true)
       setShowWalletModal(false)
     } catch (err) {
       console.error("[v0] Error loading wallet data:", err)
@@ -387,10 +388,10 @@ export default function Page() {
             <div className="max-w-[1600px] mx-auto">
               <div className="mb-3 md:mb-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center text-white font-bold text-sm">
-                    {walletData?.baseName && walletData.baseName.length > 0
-                      ? walletData.baseName[0].toUpperCase()
-                      : walletData?.address?.slice(2, 4).toUpperCase()}
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center mx-auto mb-6">
+                    <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" />
+                    </svg>
                   </div>
                   <div className="flex flex-col">
                     <span className="text-sm md:text-base text-white font-semibold">

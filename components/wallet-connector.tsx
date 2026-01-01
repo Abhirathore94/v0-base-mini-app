@@ -85,7 +85,7 @@ const walletProviders: WalletProvider[] = [
   },
   {
     id: "farcaster",
-    name: "Farcaster In-App",
+    name: "Farcaster In-App Wallet",
     icon: "Ⓜ️",
     description: "Farcaster app built-in wallet",
     detect: () => {
@@ -128,6 +128,7 @@ export function WalletConnector({ onConnect, onClose }: WalletConnectorProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const [availableWallets, setAvailableWallets] = useState<WalletProvider[]>([])
+  const [isDetecting, setIsDetecting] = useState(true)
 
   useEffect(() => {
     const detectWallets = setTimeout(() => {
@@ -139,7 +140,8 @@ export function WalletConnector({ onConnect, onClose }: WalletConnectorProps) {
         }
       })
       setAvailableWallets(detected)
-    }, 500)
+      setIsDetecting(false)
+    }, 1500)
 
     return () => clearTimeout(detectWallets)
   }, [])
@@ -149,17 +151,14 @@ export function WalletConnector({ onConnect, onClose }: WalletConnectorProps) {
     setError("")
 
     try {
-      console.log(`Attempting to connect ${provider.name}...`)
       const accounts = await provider.connect()
       if (accounts && accounts.length > 0) {
-        console.log(`Successfully connected to ${provider.id}:`, accounts[0])
         onConnect({
           provider: provider.id,
           address: accounts[0],
         })
       }
     } catch (err: any) {
-      console.error(`Connection error: ${err.message}`)
       setError(err.message || `Failed to connect ${provider.name}`)
     } finally {
       setIsLoading(false)
@@ -183,7 +182,11 @@ export function WalletConnector({ onConnect, onClose }: WalletConnectorProps) {
         )}
 
         <div className="space-y-3">
-          {availableWallets.length > 0 ? (
+          {isDetecting ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-2 border-cyan-400 border-t-transparent" />
+            </div>
+          ) : availableWallets.length > 0 ? (
             <>
               {availableWallets.map((wallet) => (
                 <button
