@@ -53,18 +53,18 @@ export function Sidebar() {
 
   const getUserInitial = () => {
     if (!userData) return "?"
-    if (userData.baseName) {
+    if (userData.baseName && userData.baseName.length > 0) {
       return userData.baseName[0].toUpperCase()
     }
-    return userData.address.slice(2, 4).toUpperCase()
+    return userData.address?.slice(2, 4).toUpperCase() ?? "?"
   }
 
   const getUserLabel = () => {
     if (!userData) return "Connect"
-    if (userData.baseName) {
+    if (userData.baseName && userData.baseName.length > 0) {
       return userData.baseName.length > 12 ? userData.baseName.slice(0, 12) + "..." : userData.baseName
     }
-    return `User ${userData.address.slice(2, 6)}`
+    return `User ${userData.address?.slice(2, 6) ?? "????"}`
   }
 
   return (

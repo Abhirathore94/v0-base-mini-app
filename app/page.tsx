@@ -13,6 +13,9 @@ import { WalletConnector } from "@/components/wallet-connector"
 declare global {
   interface Window {
     ethereum?: any
+    okxwallet?: any
+    rabby?: any
+    farcaster?: any
   }
 }
 
@@ -54,8 +57,6 @@ async function fetchTransactionHistory(address: string): Promise<any[]> {
 
 async function checkBaseName(address: string): Promise<string | undefined> {
   try {
-    console.log("[v0] Checking Base name for:", address)
-
     try {
       const response = await fetch("https://mainnet.base.org", {
         method: "POST",
@@ -76,9 +77,7 @@ async function checkBaseName(address: string): Promise<string | undefined> {
       const data = await response.json()
 
       if (data.result && data.result !== "0x" && data.result.length > 66) {
-        // Parse the result - it's hex encoded
-        const hexResult = data.result.slice(2) // Remove 0x
-        // Skip the first 64 bytes (offset) and next 64 bytes (length), then read the actual string
+        const hexResult = data.result.slice(2)
         const nameHex = hexResult.slice(128)
         let baseName = ""
         for (let i = 0; i < nameHex.length; i += 2) {
@@ -87,12 +86,11 @@ async function checkBaseName(address: string): Promise<string | undefined> {
           baseName += String.fromCharCode(Number.parseInt(byte, 16))
         }
         if (baseName) {
-          console.log("[v0] Found actual Base name:", baseName)
           return baseName
         }
       }
     } catch (rpcError) {
-      console.log("[v0] RPC reverse lookup failed:", rpcError)
+      // Silent fail - try BaseScan next
     }
 
     const baseScanResponse = await fetch(
@@ -102,41 +100,34 @@ async function checkBaseName(address: string): Promise<string | undefined> {
 
     if (baseScanData.status === "1" && baseScanData.result) {
       const baseNameContracts = [
-        "0x4ccb0bb02fcaba27e82a56646e81d8c5bc4119a5", // Base Name Registry
-        "0xc6d566a56a1aff6508b41f6c90ff131615583bcd", // Base Name Resolver
-        "0x03c4738ee98ae44591e1a4a4f3cab6641d95dd9a", // Base Registrar Controller
-        "0x91eefd53e3e7c2e33a75dcaadd0c32c2f078e7e4", // L2 Resolver
+        "0x4ccb0bb02fcaba27e82a56646e81d8c5bc4119a5",
+        "0xc6d566a56a1aff6508b41f6c90ff131615583bcd",
+        "0x03c4738ee98ae44591e1a4a4f3cab6641d95dd9a",
+        "0x91eefd53e3e7c2e33a75dcaadd0c32c2f078e7e4",
       ]
 
       for (const tx of baseScanData.result) {
         const toAddress = tx.to?.toLowerCase()
 
         if (toAddress && baseNameContracts.includes(toAddress)) {
-          console.log("[v0] Found Base name transaction:", tx.hash, "contract:", toAddress)
           return "your-name.base.eth"
         }
       }
     }
-
-    console.log("[v0] No Base name found for address")
   } catch (error) {
-    console.error("[v0] Error checking Base name:", error)
+    // Silent fail
   }
   return undefined
 }
 
 async function fetchWalletData(address: string): Promise<WalletData> {
   try {
-    console.log("[v0] Fetching wallet data for:", address)
-
-    // Fetch transaction count
     const txCount = await window.ethereum.request({
       method: "eth_getTransactionCount",
       params: [address, "latest"],
     })
     const txVolume = Number.parseInt(txCount, 16)
 
-    // Fetch real transaction history
     const transactions = await fetchTransactionHistory(address)
 
     let nftActivity = 0
@@ -154,29 +145,22 @@ async function fetchWalletData(address: string): Promise<WalletData> {
       const timestamp = Number.parseInt(tx.timeStamp) * 1000
       let type = "Transfer"
 
-      // Check if it's a contract deployment (no 'to' address)
       if (!tx.to || tx.to === "") {
         newContracts++
         type = "Contract Deploy"
       }
 
-      // Check if it's an NFT transaction (methodId indicates ERC721/ERC1155)
       if (tx.input && tx.input.length > 10) {
         const methodId = tx.input.slice(0, 10)
-        // Common NFT method signatures
         if (
-          methodId === "0x42842e0e" || // safeTransferFrom (ERC721)
-          methodId === "0x23b872dd" || // transferFrom (ERC721)
-          methodId === "0xf242432a" || // safeTransferFrom (ERC1155)
-          methodId === "0xa22cb465" // setApprovalForAll
+          methodId === "0x42842e0e" ||
+          methodId === "0x23b872dd" ||
+          methodId === "0xf242432a" ||
+          methodId === "0xa22cb465"
         ) {
           nftActivity++
           type = "NFT"
-        } else if (
-          methodId === "0x38ed1739" || // swapExactTokensForTokens
-          methodId === "0x7ff36ab5" || // swapExactETHForTokens
-          methodId === "0x18cbafe5" // swapExactTokensForETH
-        ) {
+        } else if (methodId === "0x38ed1739" || methodId === "0x7ff36ab5" || methodId === "0x18cbafe5") {
           type = "Swap"
         }
       }
@@ -193,7 +177,6 @@ async function fetchWalletData(address: string): Promise<WalletData> {
 
     let baseName = await checkBaseName(address)
 
-    // Also check recent transactions for name-related activity
     if (!baseName) {
       for (const tx of transactions) {
         if (
@@ -204,16 +187,10 @@ async function fetchWalletData(address: string): Promise<WalletData> {
             tx.to.toLowerCase() === "0x91eefd53e3e7c2e33a75dcaadd0c32c2f078e7e4")
         ) {
           baseName = `${address.slice(0, 6)}.base.eth`
-          console.log("[v0] Detected Base name from transaction history")
           break
         }
       }
     }
-
-    console.log("[v0] Base name result:", baseName)
-    console.log("[v0] Transaction count:", txVolume)
-    console.log("[v0] NFT activity:", nftActivity)
-    console.log("[v0] New contracts:", newContracts)
 
     const baseScore = Math.min(35, txVolume * 1.5)
     const nftBonus = Math.min(25, nftActivity * 3)
@@ -236,7 +213,7 @@ async function fetchWalletData(address: string): Promise<WalletData> {
       recentTransactions,
     }
   } catch (error) {
-    console.error("[v0] Error fetching wallet data:", error)
+    console.error("Error fetching wallet data")
     throw error
   }
 }
@@ -244,27 +221,21 @@ async function fetchWalletData(address: string): Promise<WalletData> {
 function detectProtocol(to: string, input: string): { name: string; url: string } | null {
   const toAddress = to?.toLowerCase()
 
-  // Uniswap V3 Router
   if (toAddress === "0x2626664c2603336e57b271c5c0b26f421741e481") {
     return { name: "Uniswap V3", url: "https://app.uniswap.org" }
   }
-  // Aerodrome DEX
   if (toAddress === "0xcf77a3ba9a5ca399b7c97c74d54e5b1beb874e43") {
     return { name: "Aerodrome", url: "https://aerodrome.finance" }
   }
-  // BaseSwap
   if (toAddress === "0x327df1e6de05895d2ab08513aadd9313fe505d86") {
     return { name: "BaseSwap", url: "https://baseswap.fi" }
   }
-  // OpenSea
   if (toAddress === "0x00000000000000adc04c56bf30ac9d3c0aaf14dc") {
     return { name: "OpenSea", url: "https://opensea.io" }
   }
-  // Base Name Registry
   if (toAddress === "0x4ccb0bb02fcaba27e82a56646e81d8c5bc4119a5") {
     return { name: "Base Names", url: "https://www.base.org/names" }
   }
-  // Coinbase Wallet
   if (toAddress === "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48") {
     return { name: "Coinbase", url: "https://www.coinbase.com" }
   }
@@ -272,7 +243,7 @@ function detectProtocol(to: string, input: string): { name: string; url: string 
   return null
 }
 
-export default function Home() {
+export default function Page() {
   const [walletConnected, setWalletConnected] = useState(false)
   const [walletData, setWalletData] = useState<WalletData | null>(null)
   const [isConnecting, setIsConnecting] = useState(false)
@@ -280,37 +251,30 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true)
   const [showWalletModal, setShowWalletModal] = useState(false)
   const [selectedProvider, setSelectedProvider] = useState("")
+  const [isFarcasterContext, setIsFarcasterContext] = useState(false)
 
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        const { sdk } = await import("@farcaster/miniapp-sdk")
+        try {
+          const { default: sdk } = await import("@farcaster/miniapp-sdk")
+          await sdk.actions.ready()
+          setIsFarcasterContext(true)
+        } catch (sdkError) {
+          // Silent fail - not in Farcaster context
+        }
 
-        await sdk.actions.ready()
-        console.log("[v0] SDK ready() called successfully")
-      } catch (error) {
-        console.error("[v0] SDK initialization error:", error)
-        // Don't fail the app, just log the error
+        setShowWalletModal(true)
+      } catch (err) {
+        console.error("[v0] Error during initialization:", err)
+        setError("Failed to initialize app")
+      } finally {
+        setIsLoading(false)
       }
-
-      checkConnection()
     }
 
     initializeApp()
   }, [])
-
-  const checkConnection = async () => {
-    if (typeof window.ethereum !== "undefined") {
-      try {
-        const accounts = await window.ethereum.request({ method: "eth_accounts" })
-        if (accounts.length > 0) {
-          await loadWalletData(accounts[0])
-        }
-      } catch (err) {
-        console.error("[v0] Error checking connection:", err)
-      }
-    }
-  }
 
   const connectWallet = () => {
     setShowWalletModal(true)
@@ -324,6 +288,7 @@ export default function Home() {
       setShowWalletModal(false)
     } catch (err) {
       console.error("[v0] Error loading wallet data:", err)
+      setError("Failed to load wallet data. Please try again.")
     } finally {
       setIsConnecting(false)
     }
@@ -350,14 +315,12 @@ export default function Home() {
     const data: Array<{ timestamp: number; volume: number; users: number }> = []
     const now = Date.now()
 
-    // Group transactions by day
     const txByDay = new Map<string, number>()
     walletData.recentTransactions.forEach((tx) => {
       const day = new Date(tx.timestamp).toDateString()
       txByDay.set(day, (txByDay.get(day) || 0) + 1)
     })
 
-    // Generate chart data for last 24 hours
     for (let i = 23; i >= 0; i--) {
       const timestamp = now - i * 3600000
       const day = new Date(timestamp).toDateString()
@@ -395,143 +358,175 @@ export default function Home() {
       {showWalletModal && <WalletConnector onConnect={handleWalletConnect} onClose={() => setShowWalletModal(false)} />}
 
       <main className="flex-1 p-3 md:p-8 overflow-hidden">
-        <div className="max-w-[1600px] mx-auto">
-          <div className="mb-3 md:mb-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center text-white font-bold text-sm">
-                {walletData.baseName
-                  ? walletData.baseName[0].toUpperCase()
-                  : walletData.address.slice(2, 4).toUpperCase()}
+        {!walletConnected ? (
+          <div className="h-full flex items-center justify-center">
+            <div className="text-center">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center mx-auto mb-6">
+                <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" />
+                </svg>
               </div>
-              <div className="flex flex-col">
-                <span className="text-sm md:text-base text-white font-semibold">
-                  {walletData.baseName || `User ${walletData.address.slice(2, 6)}`}
-                </span>
-                <div className="flex items-center gap-2 text-xs text-white/60">
-                  <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                  Connected
+              <h1 className="text-3xl font-bold text-white mb-2">Connect Your Wallet</h1>
+              <p className="text-white/60 mb-8 max-w-md">
+                {isFarcasterContext
+                  ? "Use Farcaster wallet or any connected wallet to view your Base network activity and score."
+                  : "Connect your Web3 wallet to view your Base network activity and score."}
+              </p>
+              <button
+                onClick={connectWallet}
+                disabled={isConnecting}
+                className="px-8 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isConnecting ? "Connecting..." : "Connect Wallet"}
+              </button>
+              {error && <p className="text-red-400 text-sm mt-4">{error}</p>}
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="max-w-[1600px] mx-auto">
+              <div className="mb-3 md:mb-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center text-white font-bold text-sm">
+                    {walletData?.baseName && walletData.baseName.length > 0
+                      ? walletData.baseName[0].toUpperCase()
+                      : walletData?.address?.slice(2, 4).toUpperCase()}
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-sm md:text-base text-white font-semibold">
+                      {walletData?.baseName || `User ${walletData?.address?.slice(2, 6)}`}
+                    </span>
+                    <div className="flex items-center gap-2 text-xs text-white/60">
+                      <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                      Connected
+                    </div>
+                  </div>
+                </div>
+                {walletData?.baseName && (
+                  <div className="px-3 md:px-4 py-1.5 md:py-2 rounded-full bg-cyan-500/20 border border-cyan-400/30 text-cyan-400 font-semibold text-xs md:text-sm">
+                    {walletData.baseName}
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-4 md:mb-6">
+                <div className="lg:col-span-1">
+                  <HeroScore score={walletData?.overallScore || 0} />
+                </div>
+
+                <div className="glass-card p-4 md:p-6 rounded-2xl md:rounded-3xl">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xs md:text-sm font-medium text-white/60">Live Activity</h3>
+                    <div className="flex gap-2 md:gap-4 text-[10px] md:text-xs">
+                      <div className="flex items-center gap-1.5 md:gap-2">
+                        <div className="w-2 h-2 rounded-full bg-cyan-400 glow-cyan" />
+                        <span className="text-white/60">TX</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 md:gap-2">
+                        <div className="w-2 h-2 rounded-full bg-blue-400 glow-blue" />
+                        <span className="text-white/60">Users</span>
+                      </div>
+                    </div>
+                  </div>
+                  <MiniSparkline
+                    data={transactionHistory}
+                    dataKeys={["volume", "users"]}
+                    colors={["#22d3ee", "#60a5fa"]}
+                  />
                 </div>
               </div>
-            </div>
-            {walletData.baseName && (
-              <div className="px-3 md:px-4 py-1.5 md:py-2 rounded-full bg-cyan-500/20 border border-cyan-400/30 text-cyan-400 font-semibold text-xs md:text-sm">
-                {walletData.baseName}
+
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-4 md:mb-6">
+                <StatCapsule
+                  title="TX Volume"
+                  value={walletData?.txVolume?.toString() || "0"}
+                  change="On Base Network"
+                  icon={<TrendingUp className="h-3 md:h-4 w-3 md:w-4" />}
+                  trend="up"
+                />
+                <StatCapsule
+                  title="Active Wallets"
+                  value={`${(walletData?.activeWallets / 1000).toFixed(1)}K`}
+                  change="Network"
+                  icon={<Users className="h-3 md:h-4 w-3 md:w-4" />}
+                  trend="up"
+                />
+                <StatCapsule
+                  title="NFT Activity"
+                  value={walletData?.nftActivity?.toString() || "0"}
+                  change="Real Activity"
+                  icon={<ImageIcon className="h-3 md:h-4 w-3 md:w-4" />}
+                  trend="up"
+                />
+                <StatCapsule
+                  title="New Contracts"
+                  value={walletData?.newContracts?.toString() || "0"}
+                  change="Deployed"
+                  icon={<FileCode className="h-3 md:h-4 w-3 md:w-4" />}
+                  trend="up"
+                />
               </div>
-            )}
-          </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-4 md:mb-6">
-            <div className="lg:col-span-1">
-              <HeroScore score={walletData.overallScore} />
-            </div>
-
-            <div className="glass-card p-4 md:p-6 rounded-2xl md:rounded-3xl">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xs md:text-sm font-medium text-white/60">Live Activity</h3>
-                <div className="flex gap-2 md:gap-4 text-[10px] md:text-xs">
-                  <div className="flex items-center gap-1.5 md:gap-2">
-                    <div className="w-2 h-2 rounded-full bg-cyan-400 glow-cyan" />
-                    <span className="text-white/60">TX</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 md:gap-2">
-                    <div className="w-2 h-2 rounded-full bg-blue-400 glow-blue" />
-                    <span className="text-white/60">Users</span>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 mb-4 md:mb-6">
+                <div className="glass-card p-4 md:p-6 rounded-2xl md:rounded-3xl">
+                  <h3 className="text-xs md:text-sm font-medium text-white/60 mb-4">Top Collections</h3>
+                  <div className="space-y-3">
+                    <a
+                      href="https://opensea.io/collection/base-apes"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 p-3 rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.06] transition-colors cursor-pointer group"
+                    >
+                      <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-white font-bold text-xs md:text-sm">
+                        B1
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs md:text-sm font-medium text-white group-hover:text-cyan-400 transition-colors truncate">
+                          Base Apes
+                        </p>
+                        <p className="text-[10px] md:text-xs text-white/40">Floor: 0.42 ETH</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="px-2 py-1 rounded-full bg-cyan-500/20 border border-cyan-400/30 text-[10px] md:text-xs text-cyan-400">
+                          +234
+                        </div>
+                        <ExternalLink className="h-3 md:h-4 w-3 md:w-4 text-white/40 group-hover:text-cyan-400 transition-colors flex-shrink-0" />
+                      </div>
+                    </a>
+                    <a
+                      href="https://opensea.io/collection/chain-punks-base"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 p-3 rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.06] transition-colors cursor-pointer group"
+                    >
+                      <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center text-white font-bold text-xs md:text-sm">
+                        B2
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs md:text-sm font-medium text-white group-hover:text-cyan-400 transition-colors truncate">
+                          Chain Punks
+                        </p>
+                        <p className="text-[10px] md:text-xs text-white/40">Floor: 0.28 ETH</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="px-2 py-1 rounded-full bg-cyan-500/20 border border-cyan-400/30 text-[10px] md:text-xs text-cyan-400">
+                          +189
+                        </div>
+                        <ExternalLink className="h-3 md:h-4 w-3 md:w-4 text-white/40 group-hover:text-cyan-400 transition-colors flex-shrink-0" />
+                      </div>
+                    </a>
                   </div>
                 </div>
+
+                <div className="lg:col-span-2">
+                  <ActivityFeed activities={recentActivity} />
+                </div>
               </div>
-              <MiniSparkline data={transactionHistory} dataKeys={["volume", "users"]} colors={["#22d3ee", "#60a5fa"]} />
+
+              <TaskSection walletData={walletData} />
             </div>
-          </div>
-
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-4 md:mb-6">
-            <StatCapsule
-              title="TX Volume"
-              value={walletData.txVolume.toString()}
-              change="On Base Network"
-              icon={<TrendingUp className="h-3 md:h-4 w-3 md:w-4" />}
-              trend="up"
-            />
-            <StatCapsule
-              title="Active Wallets"
-              value={`${(walletData.activeWallets / 1000).toFixed(1)}K`}
-              change="Network"
-              icon={<Users className="h-3 md:h-4 w-3 md:w-4" />}
-              trend="up"
-            />
-            <StatCapsule
-              title="NFT Activity"
-              value={walletData.nftActivity.toString()}
-              change="Real Activity"
-              icon={<ImageIcon className="h-3 md:h-4 w-3 md:w-4" />}
-              trend="up"
-            />
-            <StatCapsule
-              title="New Contracts"
-              value={walletData.newContracts.toString()}
-              change="Deployed"
-              icon={<FileCode className="h-3 md:h-4 w-3 md:w-4" />}
-              trend="up"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 mb-4 md:mb-6">
-            <div className="glass-card p-4 md:p-6 rounded-2xl md:rounded-3xl">
-              <h3 className="text-xs md:text-sm font-medium text-white/60 mb-4">Top Collections</h3>
-              <div className="space-y-3">
-                <a
-                  href="https://opensea.io/collection/base-apes"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-3 p-3 rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.06] transition-colors cursor-pointer group"
-                >
-                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-white font-bold text-xs md:text-sm">
-                    B1
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs md:text-sm font-medium text-white group-hover:text-cyan-400 transition-colors truncate">
-                      Base Apes
-                    </p>
-                    <p className="text-[10px] md:text-xs text-white/40">Floor: 0.42 ETH</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="px-2 py-1 rounded-full bg-cyan-500/20 border border-cyan-400/30 text-[10px] md:text-xs text-cyan-400">
-                      +234
-                    </div>
-                    <ExternalLink className="h-3 md:h-4 w-3 md:w-4 text-white/40 group-hover:text-cyan-400 transition-colors flex-shrink-0" />
-                  </div>
-                </a>
-                <a
-                  href="https://opensea.io/collection/chain-punks-base"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-3 p-3 rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.06] transition-colors cursor-pointer group"
-                >
-                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center text-white font-bold text-xs md:text-sm">
-                    B2
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs md:text-sm font-medium text-white group-hover:text-cyan-400 transition-colors truncate">
-                      Chain Punks
-                    </p>
-                    <p className="text-[10px] md:text-xs text-white/40">Floor: 0.28 ETH</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="px-2 py-1 rounded-full bg-cyan-500/20 border border-cyan-400/30 text-[10px] md:text-xs text-cyan-400">
-                      +189
-                    </div>
-                    <ExternalLink className="h-3 md:h-4 w-3 md:w-4 text-white/40 group-hover:text-cyan-400 transition-colors flex-shrink-0" />
-                  </div>
-                </a>
-              </div>
-            </div>
-
-            <div className="lg:col-span-2">
-              <ActivityFeed activities={recentActivity} />
-            </div>
-          </div>
-
-          <TaskSection walletData={walletData} />
-        </div>
+          </>
+        )}
       </main>
     </div>
   )

@@ -19,7 +19,7 @@ interface TaskCategory {
 }
 
 interface WalletData {
-  address: string
+  address?: string
   txVolume: number
   nftActivity: number
   newContracts: number
@@ -43,35 +43,31 @@ const TASK_CATEGORIES: TaskCategory[] = [
         id: 1,
         title: "Bridge ETH from Ethereum mainnet to Base",
         description: "Use official Base Bridge (bridge.base.org)",
-        validator: (data) => data.txVolume >= 1, // At least 1 transaction
+        validator: (data) => data.txVolume >= 1,
       },
       {
         id: 2,
         title: "Bridge via alternative protocols",
         description: "Across Protocol, Rhino.fi, Orbiter Finance, or Layerswap",
-        validator: (data) => data.txVolume >= 3, // More specific threshold
+        validator: (data) => data.txVolume >= 3,
       },
       {
         id: 3,
         title: "Bridge gETH testnet tokens",
         description: "From Goerli to Base Sepolia testnet via official testnet bridge",
-        validator: (data) => false, // Testnet not validated
+        validator: (data) => false,
       },
       {
         id: 4,
         title: "Verify your wallet via Coinbase",
         description: "Complete Onchain Verification at coinbase.com/onchain-verified",
-        validator: (data) => data.txVolume >= 5, // Verified users have more activity
+        validator: (data) => data.txVolume >= 5,
       },
       {
         id: 5,
         title: "Register a .base ENS name",
         description: "~$4–$10/year at base.org/names and hold ≥0.001 ETH on Base",
-        validator: (data) => {
-          const hasBaseName = !!data.baseName
-          console.log("[v0] Task 5 - Register .base ENS name:", hasBaseName, "baseName:", data.baseName)
-          return hasBaseName
-        },
+        validator: (data) => !!(data.baseName && data.baseName.length > 0),
       },
     ],
   },
@@ -85,17 +81,13 @@ const TASK_CATEGORIES: TaskCategory[] = [
         id: 6,
         title: "Become Based",
         description: "Visit base.org (optional: follow @base on X)",
-        validator: (data) => data.txVolume >= 1, // Has basic activity
+        validator: (data) => data.txVolume >= 1,
       },
       {
         id: 7,
         title: "Based",
         description: "Own a .base name",
-        validator: (data) => {
-          const hasBaseName = !!data.baseName
-          console.log("[v0] Task 7 - Own .base name:", hasBaseName, "baseName:", data.baseName)
-          return hasBaseName
-        },
+        validator: (data) => !!(data.baseName && data.baseName.length > 0),
       },
       {
         id: 8,
@@ -107,19 +99,19 @@ const TASK_CATEGORIES: TaskCategory[] = [
         id: 9,
         title: "Builders & Founders",
         description: "GitHub account pre-July 1, 2025 + ≥1 commit + visit base.org/build",
-        validator: (data) => data.newContracts >= 1, // Must have deployed contract
+        validator: (data) => data.newContracts >= 1,
       },
       {
         id: 10,
         title: "Creators & Voices",
         description: "Follow @base on X",
-        validator: (data) => data.txVolume >= 2, // More specific
+        validator: (data) => data.txVolume >= 2,
       },
       {
         id: 11,
         title: "Coinbase Onchain Verified",
         description: "Verify wallet",
-        validator: (data) => data.txVolume >= 8, // Higher threshold
+        validator: (data) => data.txVolume >= 8,
       },
     ],
   },
@@ -133,13 +125,13 @@ const TASK_CATEGORIES: TaskCategory[] = [
         id: 13,
         title: "Mint an Onchain Summer NFT",
         description: "Visit onchainsummer.xyz",
-        validator: (data) => data.nftActivity >= 1, // At least 1 NFT interaction
+        validator: (data) => data.nftActivity >= 1,
       },
       {
         id: 14,
         title: "Mint any NFT on Mint.Fun",
         description: "Base Day One or !fundrop pass—type '!fundrop' in chat",
-        validator: (data) => data.nftActivity >= 2, // Progressive thresholds
+        validator: (data) => data.nftActivity >= 2,
       },
       {
         id: 15,
@@ -151,7 +143,7 @@ const TASK_CATEGORIES: TaskCategory[] = [
         id: 16,
         title: "Get Early Builders NFT",
         description: "Deploy smart contract on apetimism.com/launch + complete quests",
-        validator: (data) => data.newContracts >= 1 && data.nftActivity >= 1, // Requires both
+        validator: (data) => data.newContracts >= 1 && data.nftActivity >= 1,
       },
       {
         id: 17,
@@ -236,7 +228,7 @@ const TASK_CATEGORIES: TaskCategory[] = [
         id: 28,
         title: "Provide liquidity on BaseSwap",
         description: "Visit baseswap.fi",
-        validator: (data) => data.txVolume >= 10, // More specific thresholds
+        validator: (data) => data.txVolume >= 10,
       },
       {
         id: 29,
@@ -330,7 +322,7 @@ const TASK_CATEGORIES: TaskCategory[] = [
         id: 41,
         title: "Star Base GitHub repos",
         description: "Visit github.com/base-org and make 1 commit",
-        validator: (data) => data.newContracts >= 1, // Must have contract deployment
+        validator: (data) => data.newContracts >= 1,
       },
       {
         id: 42,
@@ -387,7 +379,7 @@ const TASK_CATEGORIES: TaskCategory[] = [
 ]
 
 interface TaskSectionProps {
-  walletData: WalletData
+  walletData?: WalletData
 }
 
 export function TaskSection({ walletData }: TaskSectionProps) {
@@ -395,16 +387,25 @@ export function TaskSection({ walletData }: TaskSectionProps) {
   const [completedTasks, setCompletedTasks] = useState<Set<number>>(new Set())
 
   useEffect(() => {
+    if (!walletData) {
+      setCompletedTasks(new Set())
+      return
+    }
+
     console.log("[v0] Validating tasks with wallet data:", walletData)
     const validated = new Set<number>()
 
     TASK_CATEGORIES.forEach((category) => {
       category.tasks.forEach((task) => {
         if (task.validator) {
-          const isValid = task.validator(walletData)
-          console.log(`[v0] Task ${task.id} "${task.title}":`, isValid)
-          if (isValid) {
-            validated.add(task.id)
+          try {
+            const isValid = task.validator(walletData)
+            console.log(`[v0] Task ${task.id} "${task.title}":`, isValid)
+            if (isValid) {
+              validated.add(task.id)
+            }
+          } catch (error) {
+            console.error(`[v0] Error validating task ${task.id}:`, error)
           }
         }
       })
