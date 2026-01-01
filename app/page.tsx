@@ -261,10 +261,11 @@ export default function Page() {
           await sdk.actions.ready()
           setIsFarcasterContext(true)
         } catch (sdkError) {
-          // Silent fail - not in Farcaster context
+          // Not in Farcaster context
         }
 
-        setShowWalletModal(false)
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+        setShowWalletModal(true)
       } catch (err) {
         console.error("[v0] Error during initialization:", err)
         setError("Failed to initialize app")
