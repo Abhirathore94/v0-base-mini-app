@@ -17,65 +17,79 @@ export function WalletConnector({ onConnect, onClose }: WalletConnectorProps) {
     setError("")
 
     try {
-      // Check if wallet exists
-      if (!window.ethereum) {
-        setError("No wallet found. Please install MetaMask, Coinbase, or open in Farcaster/Base app.")
-        setIsLoading(false)
+      try {
+        const { default: sdk } = await import("@farcaster/miniapp-sdk")
+
+        // Farcaster SDK provides the wallet account directly
+        const account = await sdk.wallet.ethers.getAddress()
+
+        if (account) {
+          console.log("[v0] Farcaster wallet detected:", account)
+          onConnect({
+            provider: "Farcaster",
+            address: account,
+          })
+          return
+        }
+      } catch (farcasterError) {
+        console.log("[v0] Not in Farcaster context, trying other wallets...")
+      }
+
+      if (typeof window !== "undefined" && window.ethereum) {
+        const accounts = await window.ethereum.request({
+          method: "eth_requestAccounts",
+        })
+
+        if (!accounts || accounts.length === 0) {
+          throw new Error("No accounts found")
+        }
+
+        const address = accounts[0]
+
+        // Switch to Base network
+        try {
+          await window.ethereum.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: "0x2105" }],
+          })
+        } catch (switchError: any) {
+          if (switchError.code === 4902) {
+            await window.ethereum.request({
+              method: "wallet_addEthereumChain",
+              params: [
+                {
+                  chainId: "0x2105",
+                  chainName: "Base",
+                  rpcUrls: ["https://mainnet.base.org"],
+                  blockExplorerUrls: ["https://basescan.org"],
+                  nativeCurrency: {
+                    name: "ETH",
+                    symbol: "ETH",
+                    decimals: 18,
+                  },
+                },
+              ],
+            })
+          }
+        }
+
+        // Determine wallet provider
+        const provider = window.ethereum as any
+        let walletName = "Web3 Wallet"
+
+        if (provider.isMetaMask) walletName = "MetaMask"
+        else if (provider.isCoinbaseWallet) walletName = "Coinbase"
+        else if (provider.isOkxWallet) walletName = "OKX"
+        else if (provider.isRabby) walletName = "Rabby"
+
+        onConnect({
+          provider: walletName,
+          address,
+        })
         return
       }
 
-      // Request accounts from any injected provider
-      const accounts = await window.ethereum.request({
-        method: "eth_requestAccounts",
-      })
-
-      if (!accounts || accounts.length === 0) {
-        throw new Error("No accounts found")
-      }
-
-      const address = accounts[0]
-
-      // Switch to Base network
-      try {
-        await window.ethereum.request({
-          method: "wallet_switchEthereumChain",
-          params: [{ chainId: "0x2105" }],
-        })
-      } catch (switchError: any) {
-        // If chain doesn't exist, add it
-        if (switchError.code === 4902) {
-          await window.ethereum.request({
-            method: "wallet_addEthereumChain",
-            params: [
-              {
-                chainId: "0x2105",
-                chainName: "Base",
-                rpcUrls: ["https://mainnet.base.org"],
-                blockExplorerUrls: ["https://basescan.org"],
-                nativeCurrency: {
-                  name: "ETH",
-                  symbol: "ETH",
-                  decimals: 18,
-                },
-              },
-            ],
-          })
-        }
-      }
-
-      // Determine wallet provider
-      const provider = window.ethereum as any
-      let walletName = "Web3 Wallet"
-
-      if (provider.isMetaMask) walletName = "MetaMask"
-      else if (provider.isCoinbaseWallet) walletName = "Coinbase"
-      else if (provider.isOkxWallet) walletName = "OKX"
-      else if (provider.isRabby) walletName = "Rabby"
-
-      onConnect({
-        provider: walletName,
-        address,
-      })
+      setError("No wallet detected. Please use Farcaster app, MetaMask, Coinbase, or another Web3 wallet.")
     } catch (err: any) {
       console.error("[v0] Connection error:", err)
       if (err.code === 4001) {
@@ -100,7 +114,7 @@ export function WalletConnector({ onConnect, onClose }: WalletConnectorProps) {
           )}
         </div>
 
-        <p className="text-white/70 text-sm mb-8">Connect any Ethereum wallet to view your Base network activity.</p>
+        <p className="text-white/70 text-sm mb-8">Connect your wallet to view your Base network activity and score.</p>
 
         {error && (
           <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 mb-6 text-sm text-red-400">{error}</div>
@@ -122,14 +136,14 @@ export function WalletConnector({ onConnect, onClose }: WalletConnectorProps) {
         </button>
 
         <div className="mt-6 space-y-3 text-xs text-white/60">
-          <p className="font-semibold text-white">Supported Wallets:</p>
+          <p className="font-semibold text-white">Supported:</p>
           <ul className="space-y-1 ml-2">
+            <li>✓ Farcaster In-App Wallet</li>
+            <li>✓ Base In-App Wallet</li>
             <li>✓ MetaMask</li>
             <li>✓ Coinbase Wallet</li>
             <li>✓ OKX Wallet</li>
             <li>✓ Rabby Wallet</li>
-            <li>✓ Farcaster In-App (open in Farcaster app)</li>
-            <li>✓ Base In-App (open in Base app)</li>
           </ul>
         </div>
       </div>

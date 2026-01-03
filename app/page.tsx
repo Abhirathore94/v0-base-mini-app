@@ -254,15 +254,15 @@ export default function Page() {
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        // Try Farcaster SDK
         try {
           const { default: sdk } = await import("@farcaster/miniapp-sdk")
           await sdk.actions.ready()
+          console.log("[v0] Farcaster SDK initialized")
         } catch (sdkError) {
-          // Not in Farcaster context
+          console.log("[v0] Not in Farcaster context")
         }
       } catch (err) {
-        console.error("Error during initialization:", err)
+        console.error("[v0] Error during initialization:", err)
       } finally {
         setIsLoading(false)
       }
