@@ -257,9 +257,9 @@ export default function Page() {
         try {
           const { default: sdk } = await import("@farcaster/miniapp-sdk")
           await sdk.actions.ready()
-          console.log("[v0] Farcaster SDK initialized")
+          console.log("[v0] Farcaster SDK initialized successfully")
         } catch (sdkError) {
-          console.log("[v0] Not in Farcaster context")
+          console.log("[v0] Not in Farcaster context or SDK error")
         }
       } catch (err) {
         console.error("[v0] Error during initialization:", err)

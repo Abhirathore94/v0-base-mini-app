@@ -17,22 +17,23 @@ export function WalletConnector({ onConnect, onClose }: WalletConnectorProps) {
     setError("")
 
     try {
-      try {
-        const { default: sdk } = await import("@farcaster/miniapp-sdk")
+      const { default: sdk } = await import("@farcaster/miniapp-sdk")
 
-        // Farcaster SDK provides the wallet account directly
+      try {
+        await sdk.actions.ready()
+        await new Promise((resolve) => setTimeout(resolve, 1000))
         const account = await sdk.wallet.ethers.getAddress()
 
         if (account) {
-          console.log("[v0] Farcaster wallet detected:", account)
+          console.log("[v0] Farcaster wallet connected:", account)
           onConnect({
             provider: "Farcaster",
             address: account,
           })
           return
         }
-      } catch (farcasterError) {
-        console.log("[v0] Not in Farcaster context, trying other wallets...")
+      } catch (farcasterError: any) {
+        console.log("[v0] Farcaster SDK error:", farcasterError.message)
       }
 
       if (typeof window !== "undefined" && window.ethereum) {
@@ -46,7 +47,6 @@ export function WalletConnector({ onConnect, onClose }: WalletConnectorProps) {
 
         const address = accounts[0]
 
-        // Switch to Base network
         try {
           await window.ethereum.request({
             method: "wallet_switchEthereumChain",
@@ -73,7 +73,6 @@ export function WalletConnector({ onConnect, onClose }: WalletConnectorProps) {
           }
         }
 
-        // Determine wallet provider
         const provider = window.ethereum as any
         let walletName = "Web3 Wallet"
 
