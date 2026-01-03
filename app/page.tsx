@@ -251,17 +251,16 @@ export default function Page() {
   const [isLoading, setIsLoading] = useState(true)
   const [showWalletModal, setShowWalletModal] = useState(false)
   const [selectedProvider, setSelectedProvider] = useState("")
-  const [isFarcasterContext, setIsFarcasterContext] = useState(false)
 
   useEffect(() => {
     const initializeApp = async () => {
       try {
+        // Try Farcaster SDK
         try {
           const { default: sdk } = await import("@farcaster/miniapp-sdk")
           await sdk.actions.ready()
-          setIsFarcasterContext(true)
         } catch (sdkError) {
-          // Not in Farcaster context
+          // Not in Farcaster context - that's fine
         }
       } catch (err) {
         console.error("Error during initialization:", err)
@@ -271,10 +270,10 @@ export default function Page() {
     }
 
     initializeApp()
-  }, []) // Empty dependency array ensures this runs only once
+  }, [])
 
   const connectWallet = () => {
-    setShowWalletModal(true) // Only open modal when user clicks button
+    setShowWalletModal(true)
   }
 
   const handleWalletConnect = async (wallet: { provider: string; address: string }) => {
@@ -366,9 +365,7 @@ export default function Page() {
               </div>
               <h1 className="text-3xl font-bold text-white mb-2">Connect Your Wallet</h1>
               <p className="text-white/60 mb-8 max-w-md">
-                {isFarcasterContext
-                  ? "Use Farcaster wallet or any connected wallet to view your Base network activity and score."
-                  : "Connect your Web3 wallet to view your Base network activity and score."}
+                Connect your Web3 wallet to view your Base network activity and score.
               </p>
               <button
                 onClick={connectWallet}
