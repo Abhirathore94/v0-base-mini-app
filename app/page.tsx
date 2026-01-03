@@ -250,7 +250,6 @@ export default function Page() {
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(true)
   const [showWalletModal, setShowWalletModal] = useState(false)
-  const [selectedProvider, setSelectedProvider] = useState("")
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -260,7 +259,7 @@ export default function Page() {
           const { default: sdk } = await import("@farcaster/miniapp-sdk")
           await sdk.actions.ready()
         } catch (sdkError) {
-          // Not in Farcaster context - that's fine
+          // Not in Farcaster context
         }
       } catch (err) {
         console.error("Error during initialization:", err)
@@ -272,12 +271,7 @@ export default function Page() {
     initializeApp()
   }, [])
 
-  const connectWallet = () => {
-    setShowWalletModal(true)
-  }
-
   const handleWalletConnect = async (wallet: { provider: string; address: string }) => {
-    setSelectedProvider(wallet.provider)
     setIsConnecting(true)
     try {
       await loadWalletData(wallet.address)
@@ -299,6 +293,7 @@ export default function Page() {
       setWalletConnected(true)
     } catch (err) {
       setError("Failed to load wallet data")
+      throw err
     } finally {
       setIsLoading(false)
     }
@@ -368,7 +363,7 @@ export default function Page() {
                 Connect your Web3 wallet to view your Base network activity and score.
               </p>
               <button
-                onClick={connectWallet}
+                onClick={() => setShowWalletModal(true)}
                 disabled={isConnecting}
                 className="px-8 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
