@@ -16,25 +16,24 @@ export default function RootLayoutClient({
   children: React.ReactNode
 }>) {
   useEffect(() => {
-    const initializeMiniapp = async () => {
+    const initializeSdk = async () => {
       try {
-        const url = new URL(window.location.href)
-        const isMini =
-          url.pathname.startsWith("/mini") ||
-          url.searchParams.get("miniApp") === "true" ||
-          /Warpcast|farcaster/i.test(navigator.userAgent)
+        // Import the SDK and call ready immediately
+        const { sdk } = await import("@farcaster/miniapp-sdk")
 
-        if (isMini) {
-          const { sdk } = await import("@farcaster/miniapp-sdk")
+        // Call ready to signal the miniapp is loaded
+        // This works whether in Farcaster or web browser
+        await sdk.actions.ready()
 
-          await sdk.actions.ready()
-        }
+        console.log("[v0] SDK ready called successfully")
       } catch (error) {
-        console.error("[v0] Failed to initialize miniapp:", error)
+        // If SDK import fails, we're likely on web, not in Farcaster
+        console.log("[v0] Not in Farcaster context or SDK import failed:", (error as Error).message)
       }
     }
 
-    initializeMiniapp()
+    // Call immediately on mount
+    initializeSdk()
   }, [])
 
   return (
