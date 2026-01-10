@@ -120,13 +120,9 @@ async function checkBaseName(address: string): Promise<string | undefined> {
 
 async function fetchWalletData(address: string): Promise<WalletData> {
   try {
-    const txCount = await window.ethereum.request({
-      method: "eth_getTransactionCount",
-      params: [address, "latest"],
-    })
-    const txVolume = Number.parseInt(txCount, 16)
-
     const transactions = await fetchTransactionHistory(address)
+
+    const txVolume = transactions.length
 
     let nftActivity = 0
     let newContracts = 0
@@ -211,7 +207,7 @@ async function fetchWalletData(address: string): Promise<WalletData> {
       recentTransactions,
     }
   } catch (error) {
-    console.error("Error fetching wallet data")
+    console.error("[v0] Error fetching wallet data:", error)
     throw error
   }
 }
