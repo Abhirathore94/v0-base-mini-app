@@ -1,5 +1,6 @@
 "use client"
 
+import { useAccount } from "wagmi"
 import { Sidebar } from "@/components/sidebar"
 import { HeroScore } from "@/components/hero-score"
 import { StatCapsule } from "@/components/stat-capsule"
@@ -7,15 +8,12 @@ import { MiniSparkline } from "@/components/mini-sparkline"
 import { ActivityFeed } from "@/components/activity-feed"
 import { TaskSection } from "@/components/task-section"
 import { TrendingUp, Users, ImageIcon, FileCode, ExternalLink } from "lucide-react"
-import { useEffect, useState } from "react"
-import { WalletConnector } from "@/components/wallet-connector"
+import { useState, useEffect } from "react"
+import { ConnectWallet } from "@/components/connect-wallet"
 
 declare global {
   interface Window {
     ethereum?: any
-    okxwallet?: any
-    rabby?: any
-    farcaster?: any
   }
 }
 
@@ -244,56 +242,28 @@ function detectProtocol(to: string, input: string): { name: string; url: string 
 }
 
 export default function Page() {
-  const [walletConnected, setWalletConnected] = useState(false)
+  const { address, isConnected } = useAccount()
   const [walletData, setWalletData] = useState<WalletData | null>(null)
-  const [isConnecting, setIsConnecting] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
-  const [isLoading, setIsLoading] = useState(true)
-  const [showWalletModal, setShowWalletModal] = useState(false)
 
   useEffect(() => {
-    const initializeApp = async () => {
-      try {
-        try {
-          const { default: sdk } = await import("@farcaster/miniapp-sdk")
-          await sdk.actions.ready()
-          console.log("[v0] Farcaster SDK initialized successfully")
-        } catch (sdkError) {
-          console.log("[v0] Not in Farcaster context or SDK error")
-        }
-      } catch (err) {
-        console.error("[v0] Error during initialization:", err)
-      } finally {
-        setIsLoading(false)
-      }
+    if (isConnected && address) {
+      loadWalletData(address)
+    } else {
+      setWalletData(null)
     }
+  }, [address, isConnected])
 
-    initializeApp()
-  }, [])
-
-  const handleWalletConnect = async (wallet: { provider: string; address: string }) => {
-    setIsConnecting(true)
-    try {
-      await loadWalletData(wallet.address)
-      setWalletConnected(true)
-      setShowWalletModal(false)
-    } catch (err) {
-      console.error("[v0] Error loading wallet data:", err)
-      setError("Failed to load wallet data. Please try again.")
-    } finally {
-      setIsConnecting(false)
-    }
-  }
-
-  const loadWalletData = async (address: string) => {
+  const loadWalletData = async (walletAddress: string) => {
     try {
       setIsLoading(true)
-      const data = await fetchWalletData(address)
+      setError("")
+      const data = await fetchWalletData(walletAddress)
       setWalletData(data)
-      setWalletConnected(true)
     } catch (err) {
-      setError("Failed to load wallet data")
-      throw err
+      setError("Failed to load wallet data. Please try again.")
+      console.error(err)
     } finally {
       setIsLoading(false)
     }
@@ -347,29 +317,22 @@ export default function Page() {
     <div className="flex min-h-screen bg-gradient-to-br from-[#0a0a0f] via-[#12121a] to-[#0f0f16]">
       <Sidebar />
 
-      {showWalletModal && <WalletConnector onConnect={handleWalletConnect} onClose={() => setShowWalletModal(false)} />}
-
       <main className="flex-1 p-3 md:p-8 overflow-hidden">
-        {!walletConnected ? (
+        {!isConnected || !walletData ? (
           <div className="h-full flex items-center justify-center">
-            <div className="text-center">
+            <div className="text-center max-w-md">
               <div className="w-16 h-16 rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center mx-auto mb-6">
                 <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 20 20">
                   <path d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" />
                 </svg>
               </div>
               <h1 className="text-3xl font-bold text-white mb-2">Connect Your Wallet</h1>
-              <p className="text-white/60 mb-8 max-w-md">
-                Connect your Web3 wallet to view your Base network activity and score.
-              </p>
-              <button
-                onClick={() => setShowWalletModal(true)}
-                disabled={isConnecting}
-                className="px-8 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isConnecting ? "Connecting..." : "Connect Wallet"}
-              </button>
+              <p className="text-white/60 mb-8">Connect your wallet to view your Base network activity and score.</p>
+              <div className="flex justify-center">
+                <ConnectWallet />
+              </div>
               {error && <p className="text-red-400 text-sm mt-4">{error}</p>}
+              {isLoading && <p className="text-cyan-400 text-sm mt-4">Loading wallet data...</p>}
             </div>
           </div>
         ) : (
