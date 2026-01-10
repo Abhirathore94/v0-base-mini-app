@@ -15,27 +15,26 @@ export default function RootLayoutClient({
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  // <CHANGE> Added useEffect hook to call sdk.actions.ready() when miniapp loads
   useEffect(() => {
-    // <CHANGE> Detect if running inside Farcaster miniapp
-    const url = new URL(window.location.href)
-    const isMini =
-      url.pathname.startsWith("/mini") ||
-      url.searchParams.get("miniApp") === "true" ||
-      // Farcaster embeds use these user agents
-      /Warpcast|farcaster/i.test(navigator.userAgent)
+    const initializeMiniapp = async () => {
+      try {
+        const url = new URL(window.location.href)
+        const isMini =
+          url.pathname.startsWith("/mini") ||
+          url.searchParams.get("miniApp") === "true" ||
+          /Warpcast|farcaster/i.test(navigator.userAgent)
 
-    if (isMini) {
-      // <CHANGE> Dynamically import Farcaster SDK and call ready()
-      import("@farcaster/miniapp-sdk")
-        .then(({ sdk }) => {
-          // Call ready as soon as interface is ready to hide splash screen
-          sdk.actions.ready()
-        })
-        .catch((error) => {
-          console.error("[v0] Failed to load Farcaster SDK:", error)
-        })
+        if (isMini) {
+          const { sdk } = await import("@farcaster/miniapp-sdk")
+
+          await sdk.actions.ready()
+        }
+      } catch (error) {
+        console.error("[v0] Failed to initialize miniapp:", error)
+      }
     }
+
+    initializeMiniapp()
   }, [])
 
   return (
